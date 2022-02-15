@@ -26,7 +26,7 @@ public class Solver : MonoBehaviour
 
     void Start()
     {
-        words.AddRange(wordList.text.Split('\n'));
+        words.AddRange(wordList.text.Replace("\r\n", "\n").Split('\n'));
         //words.RemoveRange(1000, words.Count - 1000);
         StartCoroutine(Solve());
     }
