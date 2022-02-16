@@ -14,6 +14,41 @@ public struct Score
     }
 }
 
+public class WordSet
+{
+    int fullCount;
+    HashSet<string> set;
+
+    public WordSet(HashSet<string> words)
+    {
+        fullCount = words.Count;
+    }
+
+    public void Intersect(HashSet<string> words)
+    {
+        if (set != null)
+        {
+            set.IntersectWith(words);
+        }
+        else if (words.Count < fullCount)
+        {
+            set = new HashSet<string>(words);
+        }
+    }
+
+    public int Count()
+    {
+        if (set == null)
+        {
+            return fullCount;
+        }
+        else
+        {
+            return set.Count;
+        }
+    }
+}
+
 public class Solver : MonoBehaviour
 {
     public Word target;
@@ -21,43 +56,53 @@ public class Solver : MonoBehaviour
     public TextAsset wordList;
     public Slider progress;
     public Ranking topTen;
-    List<string> words = new List<string>();
+    WordList words;
     List<Score> rankings = new List<Score>();
+    static readonly int size = 5;
+    HashSet<string> [,] subsets = new HashSet<string> [size, Histogram.alphabet];
 
     void Start()
     {
-        words.AddRange(wordList.text.Split('\n'));
-        //words.RemoveRange(1000, words.Count - 1000);
+        words = new WordList(wordList.text.Replace("\r\n", "\n").Split('\n'));
         StartCoroutine(Solve());
     }
 
     IEnumerator Solve()
     {
         yield return null;
-        var stopwath = new System.Diagnostics.Stopwatch();
-        stopwath.Start();
-        Match match = new Match(words[0]);
-        for (int i = 0; i < words.Count; ++i)
+        var stopwatch = new System.Diagnostics.Stopwatch();
+        stopwatch.Start();
+        float elapsed = 0.0f;
+        float nextTimeCheck = 1000.0f;
+        List<string> all = new List<string>(words.AllWords());
+        for (int i = 0; i < all.Count; ++i)
         {
-            progress.value = (float)i / (float)words.Count;
-            string start = words[i];
+            progress.value = (float)i / (float)all.Count;
+            string start = all[i];
             guess.Set(start);
             float rating = 0;
-            foreach (string word in words)
+            Match match = new Match(start);
+            foreach (string word in all)
             {
-                match.Set(start);
-                target.Set(word);
                 match.Score(word);
-                guess.Set(match);
                 rating += Rejections(match);
-                if (stopwath.ElapsedMilliseconds > 33)
+                if (stopwatch.ElapsedMilliseconds > 33)
                 {
-                    stopwath.Restart();
+                    elapsed += stopwatch.ElapsedMilliseconds;
+                    if (elapsed > nextTimeCheck)
+                    {
+                        nextTimeCheck = elapsed + 1000.0f;
+                        float remaining = ((elapsed / (float)(i + 1)) * (all.Count - i)) / 3600000.0f;
+                        Debug.Log($"{remaining} hours remaining");
+                    }
+                    target.Set(word);
+                    guess.Set(match);
+                    stopwatch.Restart();
                     yield return null;
                 }
             }
 
-            rating = rating / (float)words.Count;
+            rating = rating / (float)all.Count;
             rankings.Add(new Score(start, rating));
             rankings.Sort((a, b) => b.score.CompareTo(a.score));
 
@@ -74,14 +119,54 @@ public class Solver : MonoBehaviour
 
     float Rejections(Match match)
     {
-        int rejections = 0;
-        foreach (string word in words)
+        WordSet possible = new WordSet(words.AllWords());
+        int all = possible.Count();
+        int [] letters = new int [Histogram.alphabet];
+        for (int i = 0; i < size; ++i)
         {
-            if (match.CanReject(word))
+            if (match.clues[i] == Match.Clue.Correct)
             {
-                rejections++;
+                char c = match.word[i];
+                possible.Intersect(words.WordsWithLetterInPlace(c, i));
+                letters[Histogram.IndexFromLetter(c)]++;
             }
         }
-        return (float)rejections / (float)words.Count;
+
+        for (int i = 0; i < size; ++i)
+        {
+            char c = match.word[i];
+            if (match.clues[i] == Match.Clue.Used)
+            {
+                letters[Histogram.IndexFromLetter(c)]++;
+            }
+        }
+
+        for (char c = 'a'; c <= 'z'; ++c)
+        {
+            if (letters[Histogram.IndexFromLetter(c)] == 0)
+            {
+                letters[Histogram.IndexFromLetter(c)] = -1;
+            }
+        }
+
+        for (int i = 0; i < size; ++i)
+        {
+            char c = match.word[i];
+            if (match.clues[i] == Match.Clue.Unused && letters[Histogram.IndexFromLetter(c)] == -1)
+            {
+                letters[Histogram.IndexFromLetter(c)] = 0;
+            }
+        }
+
+        for (char c = 'a'; c <= 'z'; ++c)
+        {
+            int count = letters[Histogram.IndexFromLetter(c)];
+            if (count >= 0)
+            {
+                possible.Intersect(words.WordsWithLetterCount(c, count));
+            }
+        }
+
+        return (float)(all - possible.Count()) / (float)all;
     }
 }
