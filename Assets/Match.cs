@@ -15,42 +15,43 @@ public class Match
 
     public Clue [] clues;
     public string word;
-    int [] used = new int [256];
+    Histogram histogram;
 
     public Match(string word)
     {
         this.word = word;
         clues = new Clue [word.Length];
+        histogram = new Histogram(word);
     }
 
-    public void Set(string start)
+    void ClearClues()
     {
-        this.word = start;
         for (int i = 0; i < clues.Length; ++i)
         {
             clues[i] = Clue.NotSet;
         }
     }
 
+    public void Set(string start)
+    {
+        this.word = start;
+        ClearClues();
+        histogram = new Histogram(start);
+    }
+
     public void Score(string target)
     {
-        for (int i = 0; i < used.Length; ++i)
-        {
-            used[i] = 0;
-        }
-        int size = word.Length;
-        for (int i = 0; i < size; ++i)
-        {
-            used[target[i]]++;
-        }
+        ClearClues();
+        Histogram used = new Histogram(target);
 
+        int size = word.Length;
         for (int i = 0; i < size; ++i)
         {
             char letter = word[i];
             if (target[i] == letter)
             {
                 clues[i] = Clue.Correct;
-                used[letter]--;
+                used.Use(letter);
             }
         }
 
@@ -59,10 +60,10 @@ public class Match
             if (clues[i] == Clue.NotSet)
             {
                 char letter = word[i];
-                if (used[letter] > 0)
+                if (used.Has(letter))
                 {
                     clues[i] = Clue.Used;
-                    used[letter]--;
+                    used.Use(letter);
                 }
                 else
                 {
@@ -70,41 +71,5 @@ public class Match
                 }
             }
         }
-    }
-
-    public bool CanReject(string candidate)
-    {
-        bool reject = false;
-        for (int i = 0; i < word.Length; ++i)
-        {
-            switch (clues[i])
-            {
-                case Clue.Correct:
-                    if (word[i] != candidate[i])
-                    {
-                        reject = true;
-                    }
-                    break;
-                case Clue.Used:
-                    if (!candidate.Contains(word[i].ToString()))
-                    {
-                        reject = true;
-                    }
-                    break;
-                case Clue.Unused:
-                    if (candidate.Contains(word[i].ToString()))
-                    {
-                        reject = true;
-                    }
-                    break;
-            }
-
-            if (reject)
-            {
-                break;
-            }
-        }
-
-        return reject;
     }
 }
