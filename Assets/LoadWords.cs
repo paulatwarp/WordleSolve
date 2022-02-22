@@ -5,12 +5,37 @@ using UnityEngine;
 public class LoadWords : MonoBehaviour
 {
     public TextAsset words;
-    public Word word;
+    public Word hidden;
+    public Word guess;
     List<string> wordList;
+    public Histogram histogram;
 
-    private void Start()
+    IEnumerator Start()
     {
         wordList = new List<string>(words.text.Replace("\r\n", "\n").Split('\n'));
-        word.SetWord(wordList[Random.Range(0, wordList.Count)]);
+
+        while (true)
+        {
+            string hiddenWord = wordList[Random.Range(0, wordList.Count)];
+            string guessWord = wordList[Random.Range(0, wordList.Count)];
+            hidden.SetWord(hiddenWord);
+            guess.SetWord(guessWord);
+
+            for (int i = 0; i < hiddenWord.Length; ++i)
+            {
+                if (guessWord[i] == hiddenWord[i])
+                {
+                    guess.SetMatchedLetter(i);
+                }
+            }
+
+            histogram = new Histogram(hiddenWord);
+            for (int i = 0; i < 26; ++i)
+            {
+                Debug.Log($"{(char)('a' + i)} = {histogram.letters[i].ToString()}");
+            }
+
+            yield break;
+        }
     }
 }
