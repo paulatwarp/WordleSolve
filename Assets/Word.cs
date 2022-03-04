@@ -26,8 +26,8 @@ public class Word : MonoBehaviour
         }
     }
 
-    internal void SetMatchedLetter(int i)
+    internal void SetMatchedLetter(int i, Color color)
     {
-        letters[i].SetColour(Color.green);
+        letters[i].SetColour(color);
     }
 }

@@ -13,29 +13,36 @@ public class LoadWords : MonoBehaviour
     IEnumerator Start()
     {
         wordList = new List<string>(words.text.Replace("\r\n", "\n").Split('\n'));
+        string hiddenWord = wordList[12361];//Random.Range(0, wordList.Count)];
+        hidden.SetWord(hiddenWord);
 
+        Match match = new Match(hiddenWord);
         while (true)
         {
-            string hiddenWord = wordList[Random.Range(0, wordList.Count)];
             string guessWord = wordList[Random.Range(0, wordList.Count)];
-            hidden.SetWord(hiddenWord);
+
             guess.SetWord(guessWord);
+            string clues = match.Guess(guessWord);
 
-            for (int i = 0; i < hiddenWord.Length; ++i)
+            for (int i = 0; i < clues.Length; ++i)
             {
-                if (guessWord[i] == hiddenWord[i])
+                Color color = Color.grey;
+                switch (clues[i])
                 {
-                    guess.SetMatchedLetter(i);
+                    case 'a':
+                        color = Color.grey;
+                        break;
+                    case 'c':
+                        color = Color.yellow;
+                        break;
+                    case 'm':
+                        color = Color.green;
+                        break;
                 }
+                guess.SetMatchedLetter(i, color);
             }
 
-            histogram = new Histogram(hiddenWord);
-            for (int i = 0; i < 26; ++i)
-            {
-                Debug.Log($"{(char)('a' + i)} = {histogram.letters[i].ToString()}");
-            }
-
-            yield break;
+            yield return new WaitUntil(() => Input.GetKeyDown(KeyCode.Space));
         }
     }
 }
